@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Class performance at a glance{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{{ url_for('students.add') }}" class="btn btn-ghost btn-sm d-none d-md-inline-flex">
+    <i class="bi bi-person-plus me-1"></i> Add student
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Welcome back, {{ current_user.name }}</h2>
+    <p>Track ratings, progress and synchronization for your CodeChef class.</p>
+  </div>
+  <div class="actions">
+    <a href="{{ url_for('students.import_students') }}" class="btn btn-ghost">
+      <i class="bi bi-file-earmark-arrow-up me-1"></i> Import roster
+    </a>
+    <a href="{{ url_for('students.add') }}" class="btn btn-primary">
+      <i class="bi bi-person-plus-fill me-1"></i> Add student
+    </a>
+  </div>
+</div>
+
+{% if unlinked_students or failed_students %}
+<div class="card-x card-x--attention">
+  <div class="card-x__body">
+    <div class="row-split">
+      {% if unlinked_students %}
+      <div>
+        <div class="d-flex align-center gap-2" style="margin-bottom:6px;">
+          <span class="stat__icon amber" style="width:34px;height:34px;font-size:16px;border-radius:9px;">
+            <i class="bi bi-person-dash-fill"></i>
+          </span>
+          <div>
+            <div class="fw-600">{{ unlinked_students|length }} student{{ '' if unlinked_students|length == 1 else 's' }} not linked to CodeChef</div>
+            <div class="small muted">Add a username or profile URL to start tracking their rating.</div>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2" style="margin:10px 0 12px;">
+          {% for student in unlinked_students[:8] %}
+            <a href="{{ url_for('students.profile', student_id=student.id) }}" class="pill gray">{{ student.name }}</a>
+          {% endfor %}
+          {% if unlinked_students|length > 8 %}
+            <span class="pill gray">+{{ unlinked_students|length - 8 }} more</span>
+          {% endif %}
+        </div>
+        <a href="{{ url_for('sync.history') }}" class="btn btn-ghost btn-sm">
+          <i class="bi bi-link-45deg me-1"></i> Link profiles
+        </a>
+      </div>
+      {% endif %}
+
+      {% if failed_students %}
+      <div>
+        <div class="d-flex align-center gap-2" style="margin-bottom:6px;">
+          <span class="stat__icon red" style="width:34px;height:34px;font-size:16px;border-radius:9px;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+          </span>
+          <div>
+            <div class="fw-600">{{ failed_students|length }} profile{{ '' if failed_students|length == 1 else 's' }} failed to synchronize</div>
+            <div class="small muted">CodeChef may be unreachable or the handle may be wrong.</div>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2" style="margin:10px 0 12px;">
+          {% for student in failed_students[:8] %}
+            <a href="{{ url_for('students.profile', student_id=student.id) }}" class="pill red">{{ student.name }}</a>
+          {% endfor %}
+          {% if failed_students|length > 8 %}
+            <span class="pill gray">+{{ failed_students|length - 8 }} more</span>
+          {% endif %}
+        </div>
+        <a href="{{ url_for('sync.history') }}" class="btn btn-ghost btn-sm">
+          <i class="bi bi-arrow-repeat me-1"></i> Review and retry
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat__icon blue"><i class="bi bi-people-fill"></i></div>
+    <div>
+      <div class="stat__value">{{ total_students }}</div>
+      <div class="stat__label">Total students</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon cyan"><i class="bi bi-link-45deg"></i></div>
+    <div>
+      <div class="stat__value">{{ linked_students }}</div>
+      <div class="stat__label">Linked CodeChef profiles</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon green"><i class="bi bi-graph-up-arrow"></i></div>
+    <div>
+      <div class="stat__value">{{ avg_rating if avg_rating else '—' }}</div>
+      <div class="stat__label">Average current rating</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon amber"><i class="bi bi-trophy-fill"></i></div>
+    <div>
+      <div class="stat__value">{{ highest_rating if highest_rating else '—' }}</div>
+      <div class="stat__label">Highest rating</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon violet"><i class="bi bi-check2-square"></i></div>
+    <div>
+      <div class="stat__value">{{ total_problems }}</div>
+      <div class="stat__label">Problems solved (all students)</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card-x">
+    <div class="card-x__head">
+      <h3><i class="bi bi-trophy-fill me-1"></i> Top performers</h3>
+      <div class="actions">
+        <a href="{{ url_for('leaderboard.index') }}" class="btn btn-ghost btn-sm">Full leaderboard</a>
+      </div>
+    </div>
+    <div class="card-x__body tight">
+      {% if top_students %}
+      <div class="table-wrap">
+        <table class="table-x">
+          <thead>
+            <tr>
+              <th class="col-rank">#</th>
+              <th>Student</th>
+              <th class="num">Rating</th>
+              <th class="num">Stars</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for snap in top_students %}
+            <tr>
+              <td class="col-rank">
+                <span class="rank-badge {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">{{ loop.index }}</span>
+              </td>
+              <td>
+                <a href="{{ url_for('students.profile', student_id=snap.student.id) }}" class="fw-600">
+                  {{ snap.student.name }}
+                </a>
+                <div class="small muted">{{ snap.student.roll_number }} · {{ snap.student.section }}
+                  {% if snap.global_rank %} · Global #{{ snap.global_rank }}{% endif %}
+                </div>
+              </td>
+              <td class="num fw-600">{{ snap.rating }}</td>
+              <td class="num">{{ snap.stars or 0 }}★</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty">
+        <div class="empty-icon"><i class="bi bi-trophy"></i></div>
+        <h4>No ratings yet</h4>
+        <p>Add CodeChef profiles and run a sync to populate the leaderboard.</p>
+        <a href="{{ url_for('sync.history') }}" class="btn btn-primary btn-sm">Go to synchronization</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head">
+      <h3><i class="bi bi-bar-chart-line-fill me-1"></i> Rating distribution</h3>
+      <div class="actions">
+        <a href="{{ url_for('analytics.index') }}" class="btn btn-ghost btn-sm">Analytics</a>
+      </div>
+    </div>
+    <div class="card-x__body">
+      {% if avg_rating %}
+        {% for bucket in distribution %}
+        <div class="d-flex align-center gap-2" style="margin-bottom:10px;">
+          <div class="small muted" style="width:118px; flex:none;">{{ bucket.label }}</div>
+          <div style="flex:1; height:8px; background:var(--track); border-radius:99px; overflow:hidden;">
+            <div style="height:100%; width: {{ (bucket.count / distribution_max * 100) if distribution_max else 0 }}%;
+                        background: linear-gradient(90deg,#2563eb,#06b6d4); border-radius:99px;"></div>
+          </div>
+          <div class="small fw-600" style="width:24px; text-align:right;">{{ bucket.count }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty" style="padding:28px 8px;">
+          <div class="empty-icon"><i class="bi bi-bar-chart"></i></div>
+          <h4>Nothing to chart yet</h4>
+          <p>Ratings appear here after the first successful synchronization.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card-x">
+    <div class="card-x__head">
+      <h3><i class="bi bi-arrow-up-right-circle-fill me-1"></i> Biggest improvers</h3>
+      <div class="actions">
+        <a href="{{ url_for('analytics.index') }}" class="btn btn-ghost btn-sm">View all</a>
+      </div>
+    </div>
+    <div class="card-x__body tight">
+      {% if movers %}
+      <div class="table-wrap">
+        <table class="table-x">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th class="num">First</th>
+              <th class="num">Latest</th>
+              <th class="num">Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in movers %}
+            <tr>
+              <td>
+                <a href="{{ url_for('students.profile', student_id=entry.student.id) }}" class="fw-600">{{ entry.student.name }}</a>
+                <div class="small muted">{{ entry.student.roll_number }}</div>
+              </td>
+              <td class="num">{{ entry.first }}</td>
+              <td class="num">{{ entry.latest }}</td>
+              <td class="num"><span class="delta-up">+{{ entry.delta }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty" style="padding:32px 18px;">
+        <h4>No improvement data</h4>
+        <p>At least two snapshots are needed to measure improvement.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head">
+      <h3><i class="bi bi-arrow-repeat me-1"></i> Recent synchronization</h3>
+      <div class="actions">
+        <a href="{{ url_for('sync.history') }}" class="btn btn-ghost btn-sm">History</a>
+      </div>
+    </div>
+    <div class="card-x__body tight">
+      {% if recent_syncs %}
+      <div class="table-wrap">
+        <table class="table-x">
+          <thead>
+            <tr>
+              <th>Started</th>
+              <th>Status</th>
+              <th class="num">OK</th>
+              <th class="num">Failed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in recent_syncs %}
+            <tr>
+              <td>{{ log.started_at.strftime('%d %b %Y, %H:%M') if log.started_at else '—' }}</td>
+              <td>
+                {% if log.status == 'completed' %}
+                  <span class="pill green"><i class="bi bi-check-circle-fill"></i> Completed</span>
+                {% elif log.status == 'failed' %}
+                  <span class="pill red"><i class="bi bi-x-circle-fill"></i> Failed</span>
+                {% else %}
+                  <span class="pill amber"><i class="bi bi-hourglass-split"></i> Running</span>
+                {% endif %}
+              </td>
+              <td class="num">{{ log.successful_count }}</td>
+              <td class="num">{{ log.failed_count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty" style="padding:32px 18px;">
+        <h4>No synchronization runs</h4>
+        <p>Run your first sync to collect ratings.</p>
+        <a href="{{ url_for('sync.history') }}" class="btn btn-primary btn-sm">Open synchronization</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-clock-history me-1"></i> Recently added students</h3>
+    <div class="actions">
+      <a href="{{ url_for('students.index') }}" class="btn btn-ghost btn-sm">All students</a>
+    </div>
+  </div>
+  <div class="card-x__body tight">
+    {% if recent_students %}
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Roll no.</th>
+            <th>Department</th>
+            <th>Year / Section</th>
+            <th>CodeChef</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in recent_students %}
+          <tr>
+            <td class="fw-600">{{ student.name }}</td>
+            <td>{{ student.roll_number }}</td>
+            <td>{{ student.department }}</td>
+            <td>{{ student.academic_year }} / {{ student.section }}</td>
+            <td>
+              {% if student.codechef_username %}
+                <span class="pill cyan">@{{ student.codechef_username }}</span>
+              {% else %}
+                <span class="unavailable-badge">Not linked</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a href="{{ url_for('students.profile', student_id=student.id) }}" class="btn btn-ghost btn-sm">Open</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon"><i class="bi bi-people"></i></div>
+      <h4>Your roster is empty</h4>
+      <p>Add a student individually or import the whole class from Excel.</p>
+      <a href="{{ url_for('students.add') }}" class="btn btn-primary">Add the first student</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

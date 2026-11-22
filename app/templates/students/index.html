@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Students{% endblock %}
+{% block page_title %}Students{% endblock %}
+{% block page_subtitle %}Manage the class roster and CodeChef links{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{{ url_for('students.import_students') }}" class="btn btn-ghost btn-sm d-none d-md-inline-flex">
+    <i class="bi bi-file-earmark-arrow-up me-1"></i> Import
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Class roster</h2>
+    <p>{{ students|length }} student{{ '' if students|length == 1 else 's' }} shown.</p>
+  </div>
+  <div class="actions">
+    <a href="{{ url_for('students.import_template') }}" class="btn btn-ghost">
+      <i class="bi bi-download me-1"></i> Template
+    </a>
+    <a href="{{ url_for('students.import_students') }}" class="btn btn-ghost">
+      <i class="bi bi-file-earmark-arrow-up me-1"></i> Import from Excel
+    </a>
+    {% if current_user.is_admin() %}
+    <a href="{{ url_for('students.add') }}" class="btn btn-primary">
+      <i class="bi bi-person-plus-fill me-1"></i> Add student
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-funnel-fill me-1"></i> Filter and search</h3>
+  </div>
+  <div class="card-x__body">
+    <div class="d-flex flex-wrap gap-2 align-center" style="margin-bottom:14px;">
+      <div class="filter-tabs">
+        <a href="{{ url_for('students.index', query=query, section=section, sort_by=sort_by, sort_dir=sort_dir) }}"
+           class="{% if not link_status %}active{% endif %}">All <span class="count">{{ total_count }}</span></a>
+        <a href="{{ url_for('students.index', link_status='linked', query=query, section=section, sort_by=sort_by, sort_dir=sort_dir) }}"
+           class="{% if link_status == 'linked' %}active{% endif %}">Linked <span class="count">{{ linked_count }}</span></a>
+        <a href="{{ url_for('students.index', link_status='unlinked', query=query, section=section, sort_by=sort_by, sort_dir=sort_dir) }}"
+           class="{% if link_status == 'unlinked' %}active{% endif %}">Not linked <span class="count">{{ unlinked_count }}</span></a>
+      </div>
+      {% if link_status == 'unlinked' and current_user.is_admin() %}
+      <a href="{{ url_for('sync.history') }}" class="btn btn-ghost btn-sm ms-auto">
+        <i class="bi bi-link-45deg me-1"></i> Link profiles
+      </a>
+      {% endif %}
+    </div>
+
+    <form method="GET" action="{{ url_for('students.index') }}" class="d-flex flex-wrap gap-2 align-center">
+      <input type="hidden" name="link_status" value="{{ link_status }}">
+      <div style="flex:1 1 240px;">
+        <input type="text" name="query" class="form-control" placeholder="Search name, roll number or CodeChef handle" value="{{ query }}">
+      </div>
+      <div style="flex:0 1 170px;">
+        <select name="section" class="form-select">
+          <option value="">All sections</option>
+          {% for s in sections %}
+            <option value="{{ s }}" {% if section == s %}selected{% endif %}>Section {{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="flex:0 1 170px;">
+        <select name="sort_by" class="form-select">
+          <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Sort by name</option>
+          <option value="roll_number" {% if sort_by == 'roll_number' %}selected{% endif %}>Sort by roll no.</option>
+          <option value="department" {% if sort_by == 'department' %}selected{% endif %}>Sort by department</option>
+          <option value="academic_year" {% if sort_by == 'academic_year' %}selected{% endif %}>Sort by year</option>
+        </select>
+      </div>
+      <div style="flex:0 1 140px;">
+        <select name="sort_dir" class="form-select">
+          <option value="asc" {% if sort_dir == 'asc' %}selected{% endif %}>Ascending</option>
+          <option value="desc" {% if sort_dir == 'desc' %}selected{% endif %}>Descending</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i> Apply</button>
+      {% if query or section or link_status %}
+      <a href="{{ url_for('students.index') }}" class="btn btn-ghost">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-table me-1"></i> Student records</h3>
+    <div class="actions">
+      <span class="pill gray">{{ students|length }} total</span>
+    </div>
+  </div>
+  <div class="card-x__body tight">
+    {% if students %}
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>Roll no.</th>
+            <th>Department</th>
+            <th>Year</th>
+            <th>Section</th>
+            <th class="num">Rating</th>
+            <th>CodeChef</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          {% set snap = latest.get(student.id) %}
+          <tr>
+            <td class="muted">{{ loop.index }}</td>
+            <td>
+              <a href="{{ url_for('students.profile', student_id=student.id) }}" class="fw-600">{{ student.name }}</a>
+            </td>
+            <td>{{ student.roll_number }}</td>
+            <td>{{ student.department }}</td>
+            <td>{{ student.academic_year }}</td>
+            <td><span class="pill gray">{{ student.section }}</span></td>
+            <td class="num">
+              {% if snap %}<span class="fw-600">{{ snap.rating }}</span>
+              {% else %}<span class="unavailable-badge">—</span>{% endif %}
+            </td>
+            <td>
+              {% if student.codechef_username %}
+                <a href="{{ student.codechef_url }}" target="_blank" rel="noopener" class="pill cyan">@{{ student.codechef_username }}</a>
+                {% if student.codechef_display_name %}
+                  <div class="small muted" style="margin-top:4px;">{{ student.codechef_display_name }}</div>
+                {% endif %}
+                {% if student.id in name_mismatch_ids %}
+                  <span class="pill amber" title="The CodeChef profile name is different from the roster name">Name differs</span>
+                {% endif %}
+              {% else %}
+                <a href="{{ url_for('sync.history') }}" class="unavailable-badge" title="Link this student from the synchronization page">Not linked</a>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-2" style="justify-content:flex-end;">
+                <a href="{{ url_for('students.profile', student_id=student.id) }}" class="btn btn-ghost btn-sm">View</a>
+                <a href="{{ url_for('students.edit', student_id=student.id) }}" class="btn btn-ghost btn-sm">Edit</a>
+                {% if current_user.is_admin() %}
+                <form method="POST" action="{{ url_for('students.delete', student_id=student.id) }}"
+                      data-confirm="Delete {{ student.name }}? This also removes their rating history.">
+                  <button type="submit" class="btn btn-ghost btn-sm text-danger">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon"><i class="bi bi-people"></i></div>
+      <h4>No students found</h4>
+      <p>
+        {% if query or section or link_status %}
+          Try a different search or clear the filters.
+        {% else %}
+          Add your first student or import the class roster from Excel.
+        {% endif %}
+      </p>
+      {% if query or section or link_status %}
+        <a href="{{ url_for('students.index') }}" class="btn btn-primary">Clear filters</a>
+      {% else %}
+        <a href="{{ url_for('students.add') }}" class="btn btn-primary">Add student</a>
+        <a href="{{ url_for('students.import_students') }}" class="btn btn-ghost">Import from Excel</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block page_subtitle %}Download Excel reports for the class{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Reports</h2>
+    <p>Every report is generated from the data currently stored in the tracker.</p>
+  </div>
+  <div class="actions">
+    {% if sync_failures %}
+      <span class="pill amber"><i class="bi bi-exclamation-triangle-fill"></i> {{ sync_failures }} sync run(s) with errors</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card-x">
+    <div class="card-x__head"><h3><i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Class performance</h3></div>
+    <div class="card-x__body">
+      <p class="muted" style="font-size:13.5px;">
+        Full roster with link status, CodeChef profile name, current and highest
+        rating, stars, ranks, problems solved, contests and last synchronization.
+      </p>
+      <a href="{{ url_for('reports.class_performance') }}" class="btn btn-primary">
+        <i class="bi bi-download me-1"></i> Download class report
+      </a>
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head"><h3><i class="bi bi-graph-up-arrow me-1"></i> Rating improvement</h3></div>
+    <div class="card-x__body">
+      <p class="muted" style="font-size:13.5px;">
+        Students ordered by the change between their first and latest recorded
+        rating snapshot, including snapshot counts.
+      </p>
+      <a href="{{ url_for('reports.rating_improvement') }}" class="btn btn-primary">
+        <i class="bi bi-download me-1"></i> Download improvement report
+      </a>
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head"><h3><i class="bi bi-exclamation-octagon-fill me-1"></i> Synchronization errors</h3></div>
+    <div class="card-x__body">
+      <p class="muted" style="font-size:13.5px;">
+        Failed and partially failed sync runs with processed, successful and failed
+        counts plus the recorded error details.
+      </p>
+      <a href="{{ url_for('reports.sync_error') }}" class="btn btn-primary">
+        <i class="bi bi-download me-1"></i> Download sync error report
+      </a>
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head"><h3><i class="bi bi-globe2 me-1"></i> Global &amp; country ranks</h3></div>
+    <div class="card-x__body">
+      <p class="muted" style="font-size:13.5px;">
+        Every linked student with their CodeChef global and country rank,
+        best ranks first, plus a summary sheet with rank coverage.
+      </p>
+      <a href="{{ url_for('reports.ranks') }}" class="btn btn-primary">
+        <i class="bi bi-download me-1"></i> Download rank analysis
+      </a>
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head"><h3><i class="bi bi-person-dash-fill me-1"></i> Students not linked</h3></div>
+    <div class="card-x__body">
+      <p class="muted" style="font-size:13.5px;">
+        Roster of students who do not have a CodeChef profile yet, with their
+        roll number, section and roster name, ready for follow-up.
+      </p>
+      <a href="{{ url_for('reports.unlinked') }}" class="btn btn-primary">
+        <i class="bi bi-download me-1"></i> Download not-linked report
+      </a>
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head"><h3><i class="bi bi-person-vcard me-1"></i> Individual student</h3></div>
+    <div class="card-x__body">
+      <p class="muted" style="font-size:13.5px;">
+        A single-student workbook containing their record, summary statistics and
+        complete rating history.
+      </p>
+      {% if students %}
+      <form method="GET" action="" id="studentReportForm" class="d-flex flex-wrap gap-2">
+        <div style="flex:1 1 220px;">
+          <select id="studentSelect" class="form-select">
+            {% for student in students %}
+              <option value="{{ url_for('reports.student_report', student_id=student.id) }}">
+                {{ student.name }} · {{ student.roll_number }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-download me-1"></i> Download
+        </button>
+      </form>
+      {% else %}
+        <span class="unavailable-badge">Add students first</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var form = document.getElementById('studentReportForm');
+    var select = document.getElementById('studentSelect');
+    if (form && select) {
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        if (select.value) window.location.href = select.value;
+      });
+    }
+  })();
+</script>
+{% endblock %}

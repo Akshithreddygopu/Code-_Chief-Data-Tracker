@@ -1,0 +1,49 @@
+{% extends "base_auth.html" %}
+{% block title %}Administrator setup{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <h3>Create administrator</h3>
+  <p class="auth-sub">
+    This one-time setup creates the first account with full access.
+    Additional faculty and admin accounts can be added later in Settings.
+  </p>
+
+  <form method="POST" action="{{ url_for('auth.setup') }}" novalidate>
+    <div class="mb-3">
+      <label class="form-label" for="name">Full name</label>
+      <input type="text" class="form-control" id="name" name="name"
+             placeholder="Dr. A. Sharma" required autofocus>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="email">Email address</label>
+      <input type="email" class="form-control" id="email" name="email"
+             placeholder="admin@college.edu" autocomplete="username" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="password">Password</label>
+      <input type="password" class="form-control" id="password" name="password"
+             placeholder="Minimum 8 characters" minlength="8" autocomplete="new-password" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="role">Role</label>
+      <select class="form-select" id="role" name="role">
+        <option value="admin" selected>Administrator — full access</option>
+        <option value="faculty">Faculty — read-only access</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100" style="padding:10px;">
+      <i class="bi bi-person-plus-fill me-1"></i> Create account
+    </button>
+  </form>
+
+  <div class="auth-aside-link">
+    Already have an account?
+    <a href="{{ url_for('auth.login') }}">Sign in</a>
+  </div>
+</div>
+{% endblock %}

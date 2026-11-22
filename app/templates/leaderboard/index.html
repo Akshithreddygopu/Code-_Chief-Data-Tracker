@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard{% endblock %}
+{% block page_title %}Leaderboard{% endblock %}
+{% block page_subtitle %}Latest CodeChef rating for every student{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{{ url_for('analytics.index') }}" class="btn btn-ghost btn-sm d-none d-md-inline-flex">
+    <i class="bi bi-bar-chart-line me-1"></i> Analytics
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Class ranking</h2>
+    <p>One row per student, using their most recent snapshot.</p>
+  </div>
+  <div class="actions">
+    <span class="pill blue">{{ leaderboard|length }} ranked student{{ '' if leaderboard|length == 1 else 's' }}</span>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-funnel-fill me-1"></i> Filters</h3>
+  </div>
+  <div class="card-x__body">
+    <form method="GET" action="{{ url_for('leaderboard.index') }}" class="d-flex flex-wrap gap-2 align-center">
+      <div style="flex:1 1 220px;">
+        <input type="text" name="search" class="form-control" placeholder="Search name or roll number" value="{{ search_query }}">
+      </div>
+      <div style="flex:0 1 170px;">
+        <select name="sort_by" class="form-select">
+          <option value="current_rating" {% if sort_by == 'current_rating' %}selected{% endif %}>Current rating</option>
+          <option value="highest_rating" {% if sort_by == 'highest_rating' %}selected{% endif %}>Highest rating</option>
+          <option value="rating_improvement" {% if sort_by == 'rating_improvement' %}selected{% endif %}>Rating improvement</option>
+          <option value="global_rank" {% if sort_by == 'global_rank' %}selected{% endif %}>Global rank</option>
+          <option value="country_rank" {% if sort_by == 'country_rank' %}selected{% endif %}>Country rank</option>
+        </select>
+      </div>
+      <div style="flex:0 1 140px;">
+        <select name="sort_dir" class="form-select">
+          <option value="desc" {% if sort_dir == 'desc' %}selected{% endif %}>Descending</option>
+          <option value="asc" {% if sort_dir == 'asc' %}selected{% endif %}>Ascending</option>
+        </select>
+      </div>
+      <div style="flex:0 1 150px;">
+        <select name="section" class="form-select">
+          <option value="">All sections</option>
+          {% for s in sections %}
+            <option value="{{ s }}" {% if section_filter == s %}selected{% endif %}>Section {{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i> Apply</button>
+      {% if search_query or section_filter %}
+      <a href="{{ url_for('leaderboard.index') }}" class="btn btn-ghost">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-trophy-fill me-1"></i> Rankings</h3>
+  </div>
+  <div class="card-x__body tight">
+    {% if leaderboard %}
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead>
+          <tr>
+            <th class="col-rank">Rank</th>
+            <th>Student</th>
+            <th>Roll no.</th>
+            <th>Section</th>
+            <th>Username</th>
+            <th class="num">Current</th>
+            <th class="num">Highest</th>
+            <th class="num">Stars</th>
+            <th class="num">Global rank</th>
+            <th class="num">Country rank</th>
+            <th class="num">Change</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in leaderboard %}
+          <tr>
+            <td class="col-rank">
+              <span class="rank-badge {% if entry.rank == 1 %}gold{% elif entry.rank == 2 %}silver{% elif entry.rank == 3 %}bronze{% endif %}">{{ entry.rank }}</span>
+            </td>
+            <td>
+              <a href="{{ url_for('students.profile', student_id=entry.student.id) }}" class="fw-600">{{ entry.student.name }}</a>
+            </td>
+            <td>{{ entry.student.roll_number }}</td>
+            <td><span class="pill gray">{{ entry.student.section }}</span></td>
+            <td>
+              {% if entry.student.codechef_username %}
+                <a href="{{ entry.student.codechef_url }}" target="_blank" rel="noopener" class="small">@{{ entry.student.codechef_username }}</a>
+              {% else %}
+                <span class="unavailable-badge">—</span>
+              {% endif %}
+            </td>
+            <td class="num fw-600">{{ entry.current_rating }}</td>
+            <td class="num">{{ entry.highest_rating }}</td>
+            <td class="num">{{ entry.stars or 0 }}★</td>
+            <td class="num">{{ entry.global_rank or '—' }}</td>
+            <td class="num">{{ entry.country_rank or '—' }}</td>
+            <td class="num">
+              {% if entry.rating_improvement > 0 %}
+                <span class="delta-up">+{{ entry.rating_improvement }}</span>
+              {% elif entry.rating_improvement < 0 %}
+                <span class="delta-down">{{ entry.rating_improvement }}</span>
+              {% else %}
+                <span class="delta-flat">0</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a href="{{ url_for('students.profile', student_id=entry.student.id) }}" class="btn btn-ghost btn-sm">View</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon"><i class="bi bi-trophy"></i></div>
+      <h4>No leaderboard data</h4>
+      <p>
+        {% if search_query or section_filter %}
+          No students match these filters.
+        {% else %}
+          Synchronize students with CodeChef profiles to build the leaderboard.
+        {% endif %}
+      </p>
+      {% if search_query or section_filter %}
+        <a href="{{ url_for('leaderboard.index') }}" class="btn btn-primary">Clear filters</a>
+      {% else %}
+        <a href="{{ url_for('sync.history') }}" class="btn btn-primary">Go to synchronization</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

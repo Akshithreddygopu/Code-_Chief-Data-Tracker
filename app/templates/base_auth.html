@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <title>{% block title %}Sign in{% endblock %} · CodeChef Class Tracker</title>
+
+  <script>
+    /* Apply the saved theme before first paint to avoid a flash. */
+    (function () {
+      try {
+        var stored = localStorage.getItem('cct-theme');
+        var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body class="auth-body">
+
+  <button class="icon-btn theme-toggle auth-theme-toggle" type="button"
+          data-theme-toggle aria-label="Toggle dark mode" title="Switch theme">
+    <i class="bi bi-moon-stars-fill" data-theme-icon></i>
+  </button>
+
+  <!-- Left: product hero -->
+  <section class="auth-hero">
+    <div>
+      <div class="d-flex align-center gap-3" style="gap:12px;">
+        <span class="brand-mark"><i class="bi bi-terminal-fill"></i></span>
+        <div class="brand-text">
+          <strong style="font-size:15px;">CodeChef Tracker</strong>
+          <span style="color:#8fa3bf; font-size:11px; letter-spacing:.08em; text-transform:uppercase;">Class Performance</span>
+        </div>
+      </div>
+
+      <h2 style="margin-top:48px;">Track every student's coding journey in one place.</h2>
+      <p class="lead">
+        Ratings, rankings, rating history and Excel reports for your entire class —
+        synced automatically from CodeChef profiles.
+      </p>
+
+      <div class="auth-features">
+        <div class="auth-feature">
+          <span class="fi"><i class="bi bi-people-fill"></i></span>
+          <div>
+            <strong>Class roster management</strong>
+            <span class="fs">Add students individually or import a full roster from Excel.</span>
+          </div>
+        </div>
+        <div class="auth-feature">
+          <span class="fi"><i class="bi bi-graph-up-arrow"></i></span>
+          <div>
+            <strong>Live performance analytics</strong>
+            <span class="fs">Leaderboards, rating distribution and improvement trends.</span>
+          </div>
+        </div>
+        <div class="auth-feature">
+          <span class="fi"><i class="bi bi-shield-check"></i></span>
+          <div>
+            <strong>Role-based access</strong>
+            <span class="fs">Administrators manage data; faculty get read-only insight.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-footnote">
+      Private class tool · Data sourced from public CodeChef profiles
+    </div>
+  </section>
+
+  <!-- Right: auth form -->
+  <section class="auth-panel">
+    <div style="width:100%; max-width:420px;">
+      <div class="auth-mobile-brand">
+        <span class="brand-mark"><i class="bi bi-terminal-fill"></i></span>
+        <div class="brand-text">
+          <strong>CodeChef Tracker</strong>
+          <span>Class Performance</span>
+        </div>
+      </div>
+
+      {% include "partials/flashes.html" %}
+      {% block content %}{% endblock %}
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

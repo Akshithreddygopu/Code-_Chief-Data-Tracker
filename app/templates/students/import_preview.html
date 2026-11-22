@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Import Preview{% endblock %}
+{% block page_title %}Import Preview{% endblock %}
+{% block page_subtitle %}{{ filename }}{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Review before importing</h2>
+    <p>Nothing has been saved yet. Check the flagged rows below.</p>
+  </div>
+  <div class="actions">
+    <a href="{{ url_for('students.import_students') }}" class="btn btn-ghost">
+      <i class="bi bi-arrow-left me-1"></i> Choose another file
+    </a>
+    {% if result.summary.valid %}
+    <form method="POST" action="{{ url_for('students.import_confirm') }}"
+          data-confirm="Import {{ result.summary.valid }} valid student row(s)?">
+      <input type="hidden" name="token" value="{{ token }}">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check2-circle me-1"></i> Import {{ result.summary.valid }} student{{ '' if result.summary.valid == 1 else 's' }}
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat__icon blue"><i class="bi bi-rows"></i></div>
+    <div><div class="stat__value">{{ result.summary.total }}</div><div class="stat__label">Rows in file</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon green"><i class="bi bi-check-circle-fill"></i></div>
+    <div><div class="stat__value">{{ result.summary.valid }}</div><div class="stat__label">Ready to import</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon red"><i class="bi bi-exclamation-octagon-fill"></i></div>
+    <div><div class="stat__value">{{ result.summary.invalid }}</div><div class="stat__label">Invalid rows</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon amber"><i class="bi bi-copy"></i></div>
+    <div><div class="stat__value">{{ result.summary.duplicate }}</div><div class="stat__label">Duplicate rows</div></div>
+  </div>
+</div>
+
+{% if result.error %}
+<div class="flash danger" style="margin-bottom:20px;">
+  <i class="bi bi-exclamation-octagon-fill"></i>
+  <div>{{ result.error }}</div>
+</div>
+{% endif %}
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-table me-1"></i> Parsed rows</h3>
+    <div class="actions">
+      <span class="pill green">{{ result.summary.valid }} valid</span>
+      <span class="pill red">{{ result.summary.invalid }} invalid</span>
+      <span class="pill amber">{{ result.summary.duplicate }} duplicate</span>
+    </div>
+  </div>
+  <div class="card-x__body tight">
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead>
+          <tr>
+            <th>Row</th>
+            <th>Status</th>
+            <th>Roll no.</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Year</th>
+            <th>Section</th>
+            <th>CodeChef username</th>
+            <th class="wrap">Issues</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in result.rows %}
+          <tr>
+            <td class="muted">{{ row.row_number }}</td>
+            <td>
+              {% if row.status == 'valid' %}
+                <span class="pill green"><i class="bi bi-check-circle-fill"></i> Valid</span>
+              {% elif row.status == 'duplicate' %}
+                <span class="pill amber"><i class="bi bi-copy"></i> Duplicate</span>
+              {% else %}
+                <span class="pill red"><i class="bi bi-x-circle-fill"></i> Invalid</span>
+              {% endif %}
+            </td>
+            <td>{{ row.data.roll_number or '—' }}</td>
+            <td class="fw-600">{{ row.data.name or '—' }}</td>
+            <td>{{ row.data.department or '—' }}</td>
+            <td>{{ row.data.academic_year or '—' }}</td>
+            <td>{{ row.data.section or '—' }}</td>
+            <td>
+              {% if row.data.codechef_username %}
+                <span class="pill cyan">@{{ row.data.codechef_username }}</span>
+              {% else %}
+                <span class="unavailable-badge">Not linked</span>
+              {% endif %}
+            </td>
+            <td class="wrap small muted">
+              {% if row.errors %}
+                {{ row.errors|join('; ') }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if result.summary.valid %}
+<div class="d-flex gap-2" style="margin-bottom:26px;">
+  <form method="POST" action="{{ url_for('students.import_confirm') }}"
+        data-confirm="Import {{ result.summary.valid }} valid student row(s)?">
+    <input type="hidden" name="token" value="{{ token }}">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check2-circle me-1"></i> Confirm import
+    </button>
+  </form>
+  <a href="{{ url_for('students.index') }}" class="btn btn-ghost">Cancel</a>
+</div>
+{% endif %}
+
+{% endblock %}

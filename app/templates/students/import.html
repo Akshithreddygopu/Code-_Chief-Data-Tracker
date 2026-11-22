@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Import Students{% endblock %}
+{% block page_title %}Import Students{% endblock %}
+{% block page_subtitle %}Upload a roster from Excel or CSV{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Bulk import</h2>
+    <p>Upload the class roster, review every row, then confirm the import.</p>
+  </div>
+  <div class="actions">
+    <a href="{{ url_for('students.import_template') }}" class="btn btn-ghost">
+      <i class="bi bi-download me-1"></i> Download template
+    </a>
+    <a href="{{ url_for('students.index') }}" class="btn btn-ghost">
+      <i class="bi bi-arrow-left me-1"></i> Back to students
+    </a>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card-x">
+    <div class="card-x__head">
+      <h3><i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Upload roster</h3>
+    </div>
+    <div class="card-x__body">
+      <form method="POST" action="{{ url_for('students.import_students') }}" enctype="multipart/form-data">
+        <label class="dropzone" for="file" style="display:block; cursor:pointer;">
+          <i class="bi bi-cloud-arrow-up"></i>
+          <div class="dz-title">Choose an Excel or CSV file</div>
+          <div class="dz-sub" id="fileName">No file selected · .xlsx, .xlsm or .csv up to 16 MB</div>
+        </label>
+        <input id="file" type="file" name="file" class="form-control" style="margin-top:14px;"
+               accept=".xlsx,.xlsm,.csv" required data-file-input="#fileName">
+        <div class="d-flex gap-2" style="margin-top:16px;">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-eye me-1"></i> Preview import</button>
+          <a href="{{ url_for('students.import_template') }}" class="btn btn-ghost">Get the template</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head">
+      <h3><i class="bi bi-info-circle me-1"></i> File requirements</h3>
+    </div>
+    <div class="card-x__body">
+      <div class="kv-list">
+        <div class="kv"><span class="k">Roll Number</span><span class="v">Required, unique</span></div>
+        <div class="kv"><span class="k">Student Name</span><span class="v">Required</span></div>
+        <div class="kv"><span class="k">Department</span><span class="v">Required</span></div>
+        <div class="kv"><span class="k">Year</span><span class="v">Required</span></div>
+        <div class="kv"><span class="k">Section</span><span class="v">Required</span></div>
+        <div class="kv"><span class="k">CodeChef URL / username</span><span class="v">Optional</span></div>
+      </div>
+      <p class="small muted" style="margin-top:14px; margin-bottom:0;">
+        Header names are matched automatically (for example “Roll No.” or “Dept.”).
+        The CodeChef column may contain a full profile URL or just the username
+        (for example <code>aryanc403</code>). Rows without one are imported as
+        <strong>Not linked</strong> and are listed on the Synchronization page.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-list-check me-1"></i> What happens next</h3>
+  </div>
+  <div class="card-x__body">
+    <div class="grid-3" style="gap:16px;">
+      <div>
+        <span class="pill blue">Step 1</span>
+        <p style="margin-top:8px; margin-bottom:4px;" class="fw-600">Upload the file</p>
+        <p class="small muted mb-0">We read the first sheet of the workbook or the CSV rows.</p>
+      </div>
+      <div>
+        <span class="pill cyan">Step 2</span>
+        <p style="margin-top:8px; margin-bottom:4px;" class="fw-600">Review the preview</p>
+        <p class="small muted mb-0">Every row is validated. Duplicates and bad profiles are flagged.</p>
+      </div>
+      <div>
+        <span class="pill green">Step 3</span>
+        <p style="margin-top:8px; margin-bottom:4px;" class="fw-600">Confirm import</p>
+        <p class="small muted mb-0">Only valid, non-duplicate rows are inserted into the roster.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

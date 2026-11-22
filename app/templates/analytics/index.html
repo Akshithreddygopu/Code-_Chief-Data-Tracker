@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block page_subtitle %}Class-wide performance insight{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{{ url_for('reports.rating_improvement') }}" class="btn btn-ghost btn-sm d-none d-md-inline-flex">
+    <i class="bi bi-download me-1"></i> Improvement report
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Performance analytics</h2>
+    <p>All figures come from the latest recorded snapshot of each student.</p>
+  </div>
+  <div class="actions">
+    <span class="pill gray">{{ total_snapshots }} snapshot{{ '' if total_snapshots == 1 else 's' }} stored</span>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat__icon blue"><i class="bi bi-graph-up-arrow"></i></div>
+    <div><div class="stat__value">{{ avg_rating if avg_rating else '—' }}</div><div class="stat__label">Average rating</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon green"><i class="bi bi-arrow-up-circle-fill"></i></div>
+    <div><div class="stat__value">{{ max_rating if max_rating else '—' }}</div><div class="stat__label">Highest rating</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon amber"><i class="bi bi-arrow-down-circle-fill"></i></div>
+    <div><div class="stat__value">{{ min_rating if min_rating else '—' }}</div><div class="stat__label">Lowest rating</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon violet"><i class="bi bi-person-dash-fill"></i></div>
+    <div><div class="stat__value">{{ students_unavailable }}</div><div class="stat__label">Students without a profile</div></div>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-globe2 me-1"></i> Global &amp; country rank insights</h3>
+    <div class="actions">
+      <span class="pill gray">{{ ranked_count }} global · {{ country_ranked_count }} country</span>
+      <a href="{{ url_for('reports.ranks') }}" class="btn btn-ghost btn-sm">
+        <i class="bi bi-file-earmark-excel me-1"></i> Rank report
+      </a>
+    </div>
+  </div>
+  <div class="card-x__body">
+    {% if best_global or best_country %}
+    <div class="row-split">
+      {% if best_global %}
+      <div class="issue info">
+        <i class="bi bi-globe2"></i>
+        <div class="issue-body">
+          <div class="issue-title">Best global rank · #{{ best_global.global_rank }}</div>
+          <div class="issue-sub">
+            <a href="{{ url_for('students.profile', student_id=best_global.student.id) }}" class="fw-600">
+              {{ best_global.student.name }}
+            </a>
+            · @{{ best_global.student.codechef_username }}
+            · {{ best_global.rating }} rating
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      {% if best_country %}
+      <div class="issue info">
+        <i class="bi bi-flag-fill"></i>
+        <div class="issue-body">
+          <div class="issue-title">Best country rank · #{{ best_country.country_rank }}</div>
+          <div class="issue-sub">
+            <a href="{{ url_for('students.profile', student_id=best_country.student.id) }}" class="fw-600">
+              {{ best_country.student.name }}
+            </a>
+            · @{{ best_country.student.codechef_username }}
+            · {{ best_country.rating }} rating
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    <p class="small muted mb-0" style="margin-top:12px;">
+      Ranks are read from each student's public CodeChef profile during synchronization.
+      Students marked “Inactive” on CodeChef have no numeric rank.
+    </p>
+    {% else %}
+    <div class="empty" style="padding:26px 12px;">
+      <div class="empty-icon"><i class="bi bi-globe2"></i></div>
+      <h4>No ranks recorded yet</h4>
+      <p class="mb-0">Run a synchronization to fetch global and country ranks.</p>
+      <a href="{{ url_for('sync.history') }}" class="btn btn-primary btn-sm">Go to synchronization</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card-x">
+    <div class="card-x__head">
+      <h3><i class="bi bi-bar-chart-fill me-1"></i> Rating distribution</h3>
+    </div>
+    <div class="card-x__body">
+      {% if avg_rating %}
+      <div class="chart-box sm"><canvas id="distributionChart"></canvas></div>
+      {% else %}
+      <div class="empty" style="padding:38px 12px;">
+        <div class="empty-icon"><i class="bi bi-bar-chart"></i></div>
+        <h4>No ratings to chart</h4>
+        <p>Synchronize student profiles to see the rating distribution.</p>
+        <a href="{{ url_for('sync.history') }}" class="btn btn-primary btn-sm">Go to synchronization</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head">
+      <h3><i class="bi bi-activity me-1"></i> Class average trend</h3>
+    </div>
+    <div class="card-x__body">
+      {% if trend_labels %}
+      <div class="chart-box sm"><canvas id="trendChart"></canvas></div>
+      {% else %}
+      <div class="empty" style="padding:38px 12px;">
+        <div class="empty-icon"><i class="bi bi-activity"></i></div>
+        <h4>No trend data</h4>
+        <p>Run at least one synchronization to record ratings.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-star-fill me-1"></i> Top 10 performers</h3>
+    <div class="actions">
+      <a href="{{ url_for('leaderboard.index') }}" class="btn btn-ghost btn-sm">Full leaderboard</a>
+    </div>
+  </div>
+  <div class="card-x__body tight">
+    {% if top_performers %}
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead>
+          <tr>
+            <th class="col-rank">Rank</th>
+            <th>Student</th>
+            <th>Roll no.</th>
+            <th>Section</th>
+            <th class="num">Current</th>
+            <th class="num">Highest</th>
+            <th class="num">Stars</th>
+            <th class="num">Global rank</th>
+            <th class="num">Country rank</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for snap in top_performers %}
+          <tr>
+            <td class="col-rank"><span class="rank-badge {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">{{ loop.index }}</span></td>
+            <td><a href="{{ url_for('students.profile', student_id=snap.student.id) }}" class="fw-600">{{ snap.student.name }}</a></td>
+            <td>{{ snap.student.roll_number }}</td>
+            <td><span class="pill gray">{{ snap.student.section }}</span></td>
+            <td class="num fw-600">{{ snap.rating }}</td>
+            <td class="num">{{ snap.highest_rating }}</td>
+            <td class="num">{{ snap.stars or 0 }}★</td>
+            <td class="num">{{ snap.global_rank or '—' }}</td>
+            <td class="num">{{ snap.country_rank or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon"><i class="bi bi-star"></i></div>
+      <h4>No ratings recorded</h4>
+      <p>Synchronize student profiles to populate this table.</p>
+      <a href="{{ url_for('sync.history') }}" class="btn btn-primary">Go to synchronization</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card-x">
+    <div class="card-x__head"><h3><i class="bi bi-arrow-up-right-circle-fill me-1"></i> Top improvers</h3></div>
+    <div class="card-x__body tight">
+      {% if improvements %}
+      <div class="table-wrap">
+        <table class="table-x">
+          <thead><tr><th>Student</th><th class="num">First</th><th class="num">Latest</th><th class="num">Change</th></tr></thead>
+          <tbody>
+            {% for entry in improvements %}
+            <tr>
+              <td><a href="{{ url_for('students.profile', student_id=entry.student.id) }}" class="fw-600">{{ entry.student.name }}</a></td>
+              <td class="num">{{ entry.first }}</td>
+              <td class="num">{{ entry.latest }}</td>
+              <td class="num"><span class="delta-up">+{{ entry.delta }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty" style="padding:30px 16px;"><h4>No improvement data</h4><p>Two snapshots per student are needed.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-x">
+    <div class="card-x__head"><h3><i class="bi bi-arrow-down-right-circle-fill me-1"></i> Needs attention</h3></div>
+    <div class="card-x__body tight">
+      {% if decliners %}
+      <div class="table-wrap">
+        <table class="table-x">
+          <thead><tr><th>Student</th><th class="num">First</th><th class="num">Latest</th><th class="num">Change</th></tr></thead>
+          <tbody>
+            {% for entry in decliners %}
+            <tr>
+              <td><a href="{{ url_for('students.profile', student_id=entry.student.id) }}" class="fw-600">{{ entry.student.name }}</a></td>
+              <td class="num">{{ entry.first }}</td>
+              <td class="num">{{ entry.latest }}</td>
+              <td class="num"><span class="delta-down">{{ entry.delta }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty" style="padding:30px 16px;"><h4>No declining students</h4><p>All measured students are holding or improving.</p></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-arrow-repeat me-1"></i> Recent synchronization</h3>
+    <div class="actions"><a href="{{ url_for('sync.history') }}" class="btn btn-ghost btn-sm">History</a></div>
+  </div>
+  <div class="card-x__body tight">
+    {% if recent_syncs %}
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead><tr><th>Started</th><th>Status</th><th class="num">Processed</th><th class="num">Successful</th><th class="num">Failed</th></tr></thead>
+        <tbody>
+          {% for log in recent_syncs %}
+          <tr>
+            <td>{{ log.started_at.strftime('%d %b %Y, %H:%M') if log.started_at else '—' }}</td>
+            <td>
+              {% if log.status == 'completed' %}<span class="pill green">Completed</span>
+              {% elif log.status == 'failed' %}<span class="pill red">Failed</span>
+              {% else %}<span class="pill amber">Running</span>{% endif %}
+            </td>
+            <td class="num">{{ log.total_processed }}</td>
+            <td class="num">{{ log.successful_count }}</td>
+            <td class="num">{{ log.failed_count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty" style="padding:30px 16px;"><h4>No synchronization activity</h4><p>Run a sync to start collecting data.</p></div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    if (!window.Chart) return;
+    if (window.cctApplyChartDefaults) window.cctApplyChartDefaults();
+
+    var theme = window.cctChartTheme ? window.cctChartTheme() : { grid: '#eef2f8', text: '#64748b' };
+    var charts = [];
+
+    var dist = document.getElementById('distributionChart');
+    if (dist) {
+      charts.push(new Chart(dist, {
+        type: 'bar',
+        data: {
+          labels: {{ distribution|map(attribute='label')|list|tojson }},
+          datasets: [{
+            label: 'Students',
+            data: {{ distribution|map(attribute='count')|list|tojson }},
+            backgroundColor: theme.primary,
+            borderRadius: 6,
+            maxBarThickness: 34
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: theme.grid } },
+            x: { grid: { display: false } }
+          }
+        }
+      }));
+    }
+
+    var trend = document.getElementById('trendChart');
+    if (trend) {
+      charts.push(new Chart(trend, {
+        type: 'line',
+        data: {
+          labels: {{ trend_labels|tojson }},
+          datasets: [{
+            label: 'Class average',
+            data: {{ trend_values|tojson }},
+            borderColor: theme.cyan,
+            backgroundColor: 'rgba(6, 182, 212, 0.14)',
+            fill: true,
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { grid: { color: theme.grid } },
+            x: { grid: { display: false } }
+          }
+        }
+      }));
+    }
+
+    window.addEventListener('themechange', function () {
+      var next = window.cctChartTheme ? window.cctChartTheme() : null;
+      if (!next) return;
+      charts.forEach(function (chart) {
+        if (chart.options.scales && chart.options.scales.y && chart.options.scales.y.grid) {
+          chart.options.scales.y.grid.color = next.grid;
+        }
+        ['x', 'y'].forEach(function (axis) {
+          var scale = chart.options.scales && chart.options.scales[axis];
+          if (!scale) return;
+          scale.ticks = scale.ticks || {};
+          scale.ticks.color = next.text;
+        });
+        chart.update('none');
+      });
+    });
+  })();
+</script>
+{% endblock %}

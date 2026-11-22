@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block title %}Synchronization{% endblock %}
+{% block page_title %}Synchronization{% endblock %}
+{% block page_subtitle %}Fetch the latest CodeChef statistics{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Data synchronization</h2>
+    <p>Manual runs are recorded below. The daily job runs at 02:00 IST and also collects global and country ranks.</p>
+  </div>
+  <div class="actions">
+    {% if current_user.is_admin() and overview.linked %}
+    <form method="POST" action="{{ url_for('sync.run_all') }}"
+          data-confirm="Synchronize all {{ overview.linked }} linked student profile(s)? This can take a while."
+          data-loading>
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-arrow-repeat me-1"></i> Sync all students
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat__icon blue"><i class="bi bi-people-fill"></i></div>
+    <div><div class="stat__value">{{ overview.total }}</div><div class="stat__label">Students in roster</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon green"><i class="bi bi-link-45deg"></i></div>
+    <div><div class="stat__value">{{ overview.linked }}</div><div class="stat__label">Linked profiles</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon amber"><i class="bi bi-person-dash-fill"></i></div>
+    <div><div class="stat__value">{{ overview.unlinked }}</div><div class="stat__label">Not linked yet</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon violet"><i class="bi bi-hourglass-split"></i></div>
+    <div><div class="stat__value">{{ overview.never_synced_count }}</div><div class="stat__label">Linked, never synced</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon red"><i class="bi bi-exclamation-triangle-fill"></i></div>
+    <div><div class="stat__value">{{ overview.failed_count }}</div><div class="stat__label">Profiles with issues</div></div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon cyan"><i class="bi bi-calendar-check"></i></div>
+    <div>
+      <div class="stat__value" style="font-size:16px;">
+        {{ next_run.strftime('%d %b, %H:%M') if next_run else 'Not scheduled' }}
+      </div>
+      <div class="stat__label">Next automatic run</div>
+    </div>
+  </div>
+</div>
+
+{# ---------------------------------------------------------------- #}
+{# Students that still need a CodeChef profile                      #}
+{# ---------------------------------------------------------------- #}
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-person-dash-fill me-1"></i> Not linked to CodeChef</h3>
+    <div class="actions">
+      <span class="pill {% if overview.unlinked %}amber{% else %}green{% endif %}">
+        {{ overview.unlinked }} student{{ '' if overview.unlinked == 1 else 's' }}
+      </span>
+      {% if current_user.is_admin() and overview.unlinked %}
+      <a href="{{ url_for('sync.export_unlinked') }}" class="btn btn-ghost btn-sm">
+        <i class="bi bi-file-earmark-excel me-1"></i> Export
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card-x__body tight">
+    {% if overview.unlinked_students %}
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Roll no.</th>
+            <th>Department</th>
+            <th>Section</th>
+            {% if current_user.is_admin() %}<th style="min-width:300px;">Link CodeChef profile</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in overview.unlinked_students %}
+          <tr>
+            <td>
+              <a href="{{ url_for('students.profile', student_id=student.id) }}" class="fw-600">{{ student.name }}</a>
+              <div class="sub">Name as uploaded in the roster</div>
+            </td>
+            <td>{{ student.roll_number }}</td>
+            <td>{{ student.department }}</td>
+            <td><span class="pill gray">{{ student.section }}</span></td>
+            {% if current_user.is_admin() %}
+            <td>
+              <form method="POST" action="{{ url_for('students.link_profile', student_id=student.id) }}"
+                    class="link-form" data-loading>
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <input type="hidden" name="sync" value="1">
+                <input type="text" name="codechef" class="form-control form-control-sm"
+                       placeholder="username or profile URL" required
+                       aria-label="CodeChef username for {{ student.name }}">
+                <button type="submit" class="btn btn-primary btn-sm">
+                  <i class="bi bi-link-45deg"></i> Link &amp; sync
+                </button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty" style="padding:32px 18px;">
+      <div class="empty-icon"><i class="bi bi-check2-circle"></i></div>
+      <h4>Every student is linked</h4>
+      <p class="mb-0">All {{ overview.total }} student(s) in the roster have a CodeChef profile.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ---------------------------------------------------------------- #}
+{# Failed synchronizations                                          #}
+{# ---------------------------------------------------------------- #}
+{% if overview.failed_count %}
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-exclamation-triangle-fill me-1"></i> Synchronization issues</h3>
+    <div class="actions">
+      <span class="pill red">{{ overview.failed_count }} failed</span>
+      {% if current_user.is_admin() %}
+      <form method="POST" action="{{ url_for('sync.run_all') }}" data-loading>
+        <input type="hidden" name="scope" value="failed">
+        <button type="submit" class="btn btn-ghost btn-sm">
+          <i class="bi bi-arrow-clockwise me-1"></i> Retry failed
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card-x__body">
+    <div class="issue-list">
+      {% for student in overview.failed %}
+      <div class="issue danger">
+        <i class="bi bi-x-circle-fill"></i>
+        <div class="issue-body">
+          <div class="issue-title">
+            {{ student.name }}
+            <span class="small muted">· {{ student.roll_number }} · @{{ student.codechef_username }}</span>
+          </div>
+          <div class="issue-sub">
+            {{ student.last_sync_error or 'The last synchronization failed.' }}
+            {% if student.last_sync_at %}
+              <span class="muted">· attempted {{ student.last_sync_at.strftime('%d %b %Y, %H:%M') }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="issue-actions">
+          <a href="{{ url_for('students.profile', student_id=student.id) }}" class="btn btn-ghost btn-sm">Open</a>
+          {% if current_user.is_admin() %}
+          <form method="POST" action="{{ url_for('sync.run_student', student_id=student.id) }}"
+                data-loading>
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="btn btn-ghost btn-sm">
+              <i class="bi bi-arrow-repeat"></i> Retry
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ---------------------------------------------------------------- #}
+{# Roster name vs CodeChef profile name                             #}
+{# ---------------------------------------------------------------- #}
+{% if overview.mismatched_count %}
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-person-exclamation me-1"></i> Name differences</h3>
+    <div class="actions">
+      <span class="pill amber">{{ overview.mismatched_count }} to review</span>
+    </div>
+  </div>
+  <div class="card-x__body tight">
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead>
+          <tr>
+            <th>Name in your Excel / roster</th>
+            <th>Name on CodeChef</th>
+            <th>Username</th>
+            <th class="num">Roll no.</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in overview.mismatched %}
+          <tr>
+            <td class="fw-600">{{ student.name }}</td>
+            <td><span class="pill amber"><i class="bi bi-person-fill"></i> {{ student.codechef_display_name }}</span></td>
+            <td><a href="{{ student.codechef_url }}" target="_blank" rel="noopener">@{{ student.codechef_username }}</a></td>
+            <td class="num">{{ student.roll_number }}</td>
+            <td class="text-end">
+              <a href="{{ url_for('students.edit', student_id=student.id) }}" class="btn btn-ghost btn-sm">Fix roster name</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ---------------------------------------------------------------- #}
+{# Run history                                                      #}
+{# ---------------------------------------------------------------- #}
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-list-ul me-1"></i> Run history</h3>
+    <div class="actions"><span class="pill gray">Latest 50</span></div>
+  </div>
+  <div class="card-x__body tight">
+    {% if logs %}
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Started</th>
+            <th>Completed</th>
+            <th>Status</th>
+            <th class="num">Processed</th>
+            <th class="num">Successful</th>
+            <th class="num">Failed</th>
+            <th class="num">Not linked</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td class="muted">{{ log.id }}</td>
+            <td>{{ log.started_at.strftime('%d %b %Y, %H:%M') if log.started_at else '—' }}</td>
+            <td>{{ log.completed_at.strftime('%d %b %Y, %H:%M') if log.completed_at else '—' }}</td>
+            <td>
+              {% if log.status == 'completed' %}
+                <span class="pill green"><i class="bi bi-check-circle-fill"></i> Completed</span>
+              {% elif log.status == 'failed' %}
+                <span class="pill red"><i class="bi bi-x-circle-fill"></i> Failed</span>
+              {% elif log.status == 'running' %}
+                <span class="pill amber"><i class="bi bi-hourglass-split"></i> Running</span>
+              {% else %}
+                <span class="pill gray">{{ log.status|capitalize }}</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ log.total_processed }}</td>
+            <td class="num">{{ log.successful_count }}</td>
+            <td class="num">{{ log.failed_count }}</td>
+            <td class="num">{{ log.skipped_count or 0 }}</td>
+            <td>
+              {% if log.error_details %}
+                <details>
+                  <summary class="small text-danger" style="cursor:pointer;">Show errors</summary>
+                  <pre class="small" style="white-space:pre-wrap; margin:8px 0 0; max-width:420px;">{{ log.error_details }}</pre>
+                </details>
+              {% else %}
+                <span class="small muted">No errors</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon"><i class="bi bi-arrow-repeat"></i></div>
+      <h4>No runs yet</h4>
+      <p>Start the first synchronization to collect ratings and rankings.</p>
+      {% if current_user.is_admin() and overview.linked %}
+      <form method="POST" action="{{ url_for('sync.run_all') }}" data-loading>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-arrow-repeat me-1"></i> Sync all students
+        </button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

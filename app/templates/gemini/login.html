@@ -1,0 +1,35 @@
+{% extends "base_auth.html" %}
+{% block title %}Gemini Sign in{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <h3>Gemini AI sign in</h3>
+  <p class="auth-sub">
+    Sign in with your tracker credentials. If Gemini is configured, it can
+    assist with verification as a fallback.
+  </p>
+
+  <form method="POST" action="{{ url_for('gemini_auth.login') }}" novalidate>
+    <div class="mb-3">
+      <label class="form-label" for="email">Email address</label>
+      <input type="email" class="form-control" id="email" name="email"
+             placeholder="you@college.edu" autocomplete="username" required autofocus>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="password">Password</label>
+      <input type="password" class="form-control" id="password" name="password"
+             placeholder="••••••••" autocomplete="current-password" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100" style="padding:10px;">
+      <i class="bi bi-stars me-1"></i> Sign in with Gemini
+    </button>
+  </form>
+
+  <div class="auth-aside-link">
+    Prefer the standard form?
+    <a href="{{ url_for('auth.login') }}">Use password sign in</a>
+  </div>
+</div>
+{% endblock %}

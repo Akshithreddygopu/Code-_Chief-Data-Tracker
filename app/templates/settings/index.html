@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_subtitle %}Users and access control{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Administration</h2>
+    <p>Administrators manage data and synchronization; faculty have read-only access.</p>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-people-fill me-1"></i> Accounts</h3>
+    <div class="actions"><span class="pill gray">{{ users|length }} user{{ '' if users|length == 1 else 's' }}</span></div>
+  </div>
+  <div class="card-x__body tight">
+    <div class="table-wrap">
+      <table class="table-x">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr>
+            <td class="muted">{{ loop.index }}</td>
+            <td class="fw-600">{{ user.name }}{% if user.id == current_user.id %} <span class="pill blue">You</span>{% endif %}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              {% if user.role == 'admin' %}
+                <span class="pill red"><i class="bi bi-shield-lock-fill"></i> Admin</span>
+              {% else %}
+                <span class="pill blue"><i class="bi bi-person-fill"></i> Faculty</span>
+              {% endif %}
+            </td>
+            <td class="muted small">{{ user.created_at.strftime('%d %b %Y') if user.created_at else '—' }}</td>
+            <td>
+              <div class="d-flex gap-2" style="justify-content:flex-end;">
+                {% if user.id != current_user.id %}
+                <form method="POST" action="{{ url_for('settings.toggle_role', user_id=user.id) }}"
+                      data-confirm="Change {{ user.name }}'s role?">
+                  <button type="submit" class="btn btn-ghost btn-sm">Toggle role</button>
+                </form>
+                <form method="POST" action="{{ url_for('settings.delete_user', user_id=user.id) }}"
+                      data-confirm="Delete {{ user.name }}? This cannot be undone.">
+                  <button type="submit" class="btn btn-ghost btn-sm text-danger">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+                {% else %}
+                  <span class="small muted">Current session</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head">
+    <h3><i class="bi bi-person-plus-fill me-1"></i> Add a user</h3>
+  </div>
+  <div class="card-x__body">
+    <form method="POST" action="{{ url_for('settings.add_admin') }}">
+      <div class="grid-2" style="gap:16px;">
+        <div>
+          <label class="form-label" for="name">Full name</label>
+          <input type="text" id="name" name="name" class="form-control" placeholder="Dr. A. Sharma" required>
+        </div>
+        <div>
+          <label class="form-label" for="email">Email address</label>
+          <input type="email" id="email" name="email" class="form-control" placeholder="name@college.edu" required>
+        </div>
+        <div>
+          <label class="form-label" for="password">Temporary password</label>
+          <input type="password" id="password" name="password" class="form-control" placeholder="Minimum 8 characters" minlength="8" required>
+        </div>
+        <div>
+          <label class="form-label" for="role">Role</label>
+          <select id="role" name="role" class="form-select">
+            <option value="faculty" selected>Faculty — read-only access</option>
+            <option value="admin">Administrator — full access</option>
+          </select>
+        </div>
+      </div>
+      <div class="d-flex gap-2" style="margin-top:20px;">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Add user</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card-x">
+  <div class="card-x__head"><h3><i class="bi bi-info-circle me-1"></i> Scheduled synchronization</h3></div>
+  <div class="card-x__body">
+    <div class="kv-list">
+      <div class="kv"><span class="k">Daily run</span><span class="v">02:00 Asia/Kolkata</span></div>
+      <div class="kv"><span class="k">Manual run</span><span class="v">Synchronization page (administrators)</span></div>
+      <div class="kv"><span class="k">Failure handling</span><span class="v">Existing data is preserved; failures are logged</span></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+{% block title %}{{ student.name }}{% endblock %}
+{% block page_title %}Student Profile{% endblock %}
+{% block page_subtitle %}{{ student.roll_number }} · Section {{ student.section }}{% endblock %}
+
+{% block topbar_actions %}
+  {% if current_user.is_admin() %}
+  <form method="POST" action="{{ url_for('sync.run_student', student_id=student.id) }}" data-loading>
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <button type="submit" class="btn btn-ghost btn-sm">
+      <i class="bi bi-arrow-repeat me-1"></i> Sync now
+    </button>
+  </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="profile-hero">
+  <div class="ph-avatar">{{ (student.name or '?')[0]|upper }}</div>
+  <div>
+    <h2>{{ student.name }}</h2>
+    <div class="ph-meta">
+      {{ student.roll_number }} · {{ student.department }} · {{ student.academic_year }} / Section {{ student.section }}
+      {% if student.codechef_username %} · @{{ student.codechef_username }}{% endif %}
+    </div>
+  </div>
+  <div class="ph-actions">
+    {% if student.codechef_url %}
+    <a href="{{ student.codechef_url }}" target="_blank" rel="noopener" class="btn btn-ghost">
+      <i class="bi bi-box-arrow-up-right me-1"></i> CodeChef profile
+    </a>
+    {% endif %}
+    <a href="{{ url_for('students.edit', student_id=student.id) }}" class="btn btn-ghost">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </a>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat__icon blue"><i class="bi bi-graph-up"></i></div>
+    <div>
+      <div class="stat__value">{{ latest.rating if latest else '—' }}</div>
+      <div class="stat__label">Current rating</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon green"><i class="bi bi-arrow-up-circle"></i></div>
+    <div>
+      <div class="stat__value">{{ latest.highest_rating if latest else '—' }}</div>
+      <div class="stat__label">Highest rating</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon amber"><i class="bi bi-star-fill"></i></div>
+    <div>
+      <div class="stat__value">{{ (latest.stars ~ '★') if latest and latest.stars else '—' }}</div>
+      <div class="stat__label">Star rating</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon violet"><i class="bi bi-check2-square"></i></div>
+    <div>
+      <div class="stat__value">{{ stats.problems_solved if stats and stats.problems_solved is not none else '—' }}</div>
+      <div class="stat__label">Problems solved</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat__icon cyan"><i class="bi bi-flag"></i></div>
+    <div>
+      <div class="stat__value">{{ stats.contests_participated if stats and stats.contests_participated is not none else '—' }}</div>
+      <div class="stat__label">Contests participated</div>
+    </div>
+  </div>
+</div>
+
+<div class="row-split">
+  <div style="flex:2 1 480px;">
+    <div class="card-x">
+      <div class="card-x__head">
+        <h3><i class="bi bi-activity me-1"></i> Rating history</h3>
+        <div class="actions">
+          {% if improvement is not none %}
+            {% if improvement > 0 %}
+              <span class="pill green"><i class="bi bi-arrow-up-right"></i> +{{ improvement }} since first sync</span>
+            {% elif improvement < 0 %}
+              <span class="pill red"><i class="bi bi-arrow-down-right"></i> {{ improvement }} since first sync</span>
+            {% else %}
+              <span class="pill gray">No change since first sync</span>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-x__body">
+        {% if history %}
+          <div class="chart-box" style="height:280px;">
+            <canvas id="studentRatingChart"></canvas>
+          </div>
+        {% else %}
+          <div class="empty" style="padding:34px 12px;">
+            <div class="empty-icon"><i class="bi bi-graph-up"></i></div>
+            <h4>No rating history yet</h4>
+            <p>Run a synchronization to fetch this student's CodeChef rating.</p>
+            {% if current_user.is_admin() and student.codechef_username %}
+            <form method="POST" action="{{ url_for('sync.run_student', student_id=student.id) }}" data-loading>
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-arrow-repeat me-1"></i> Sync this student
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card-x">
+      <div class="card-x__head">
+        <h3><i class="bi bi-clock-history me-1"></i> Snapshots</h3>
+        <div class="actions"><span class="pill gray">{{ history|length }} recorded</span></div>
+      </div>
+      <div class="card-x__body tight">
+        {% if history %}
+        <div class="table-wrap">
+          <table class="table-x">
+            <thead>
+              <tr>
+                <th>Recorded</th>
+                <th class="num">Rating</th>
+                <th class="num">Highest</th>
+                <th class="num">Stars</th>
+                <th class="num">Global rank</th>
+                <th class="num">Country rank</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in history %}
+              <tr>
+                <td style="white-space:nowrap;">{{ entry.recorded_at.strftime('%d %b %y') if entry.recorded_at else '—' }}</td>
+                <td class="num fw-600">{{ entry.rating }}</td>
+                <td class="num">{{ entry.highest_rating }}</td>
+                <td class="num">{{ entry.stars or 0 }}★</td>
+                <td class="num">{{ entry.global_rank or '—' }}</td>
+                <td class="num">{{ entry.country_rank or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty" style="padding:26px;">
+          <p class="mb-0">No snapshots recorded.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:1 1 280px;">
+    <div class="card-x">
+      <div class="card-x__head">
+        <h3><i class="bi bi-person-vcard me-1"></i> Record</h3>
+      </div>
+      <div class="card-x__body">
+        <div class="kv-list">
+          <div class="kv"><span class="k">Roll number</span><span class="v">{{ student.roll_number }}</span></div>
+          <div class="kv"><span class="k">Department</span><span class="v">{{ student.department }}</span></div>
+          <div class="kv"><span class="k">Academic year</span><span class="v">{{ student.academic_year }}</span></div>
+          <div class="kv"><span class="k">Section</span><span class="v">{{ student.section }}</span></div>
+          <div class="kv"><span class="k">Status</span><span class="v">{{ student.status|capitalize }}</span></div>
+          <div class="kv">
+            <span class="k">CodeChef</span>
+            <span class="v">
+              {% if student.codechef_username %}
+                <a href="{{ student.codechef_url }}" target="_blank" rel="noopener">@{{ student.codechef_username }}</a>
+              {% else %}
+                <span class="unavailable-badge">Not linked</span>
+              {% endif %}
+            </span>
+          </div>
+          {% if student.codechef_display_name %}
+          <div class="kv">
+            <span class="k">CodeChef name</span>
+            <span class="v">
+              {{ student.codechef_display_name }}
+              {% if name_mismatch %}
+                <span class="pill amber" style="margin-left:4px;">Differs</span>
+              {% endif %}
+            </span>
+          </div>
+          {% endif %}
+          <div class="kv">
+            <span class="k">Last sync</span>
+            <span class="v">
+              {% if student.last_sync_status == 'success' %}
+                <span class="pill green"><i class="bi bi-check-circle-fill"></i> Synced</span>
+              {% elif student.last_sync_status == 'failed' %}
+                <span class="pill red"><i class="bi bi-x-circle-fill"></i> Failed</span>
+              {% elif student.last_sync_status == 'unlinked' %}
+                <span class="pill gray">Not linked</span>
+              {% else %}
+                <span class="pill gray">Never</span>
+              {% endif %}
+            </span>
+          </div>
+          <div class="kv">
+            <span class="k">Last synced</span>
+            <span class="v">{{ stats.last_synced_at.strftime('%d %b %Y, %H:%M') if stats and stats.last_synced_at else (student.last_sync_at.strftime('%d %b %Y, %H:%M') if student.last_sync_at else 'Never') }}</span>
+          </div>
+          <div class="kv">
+            <span class="k">Added</span>
+            <span class="v">{{ student.created_at.strftime('%d %b %Y') if student.created_at else '—' }}</span>
+          </div>
+        </div>
+
+        {% if name_mismatch %}
+        <div class="issue warning" style="margin-top:14px;">
+          <i class="bi bi-person-exclamation"></i>
+          <div class="issue-body">
+            <div class="issue-title">Roster name does not match CodeChef</div>
+            <div class="issue-sub">
+              Your roster says “{{ student.name }}”, while the CodeChef profile shows
+              “{{ student.codechef_display_name }}”. Check that this profile belongs to the right student.
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if student.last_sync_status == 'failed' and student.last_sync_error %}
+        <div class="issue danger" style="margin-top:14px;">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <div class="issue-body">
+            <div class="issue-title">Last synchronization failed</div>
+            <div class="issue-sub">{{ student.last_sync_error }}</div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if current_user.is_admin() %}
+          {% if student.codechef_username %}
+          <form method="POST" action="{{ url_for('students.unlink_profile', student_id=student.id) }}"
+                style="margin-top:14px;"
+                data-confirm="Unlink @{{ student.codechef_username }} from {{ student.name }}? Existing rating history is kept.">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="btn btn-ghost btn-sm text-danger">
+              <i class="bi bi-link-45deg me-1"></i> Unlink CodeChef
+            </button>
+          </form>
+          {% else %}
+          <form method="POST" action="{{ url_for('students.link_profile', student_id=student.id) }}"
+                class="link-form" style="margin-top:14px;" data-loading>
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <input type="hidden" name="sync" value="1">
+            <input type="text" name="codechef" class="form-control form-control-sm"
+                   placeholder="username or profile URL" required
+                   aria-label="CodeChef username for {{ student.name }}">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="bi bi-link-45deg"></i> Link &amp; sync
+            </button>
+          </form>
+          {% endif %}
+        {% endif %}
+
+        <div class="d-flex gap-2 flex-wrap" style="margin-top:18px;">
+          {% if current_user.is_admin() %}
+          <form method="POST" action="{{ url_for('sync.run_student', student_id=student.id) }}" data-loading>
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="bi bi-arrow-repeat me-1"></i> Sync now
+            </button>
+          </form>
+          {% endif %}
+          <a href="{{ url_for('reports.student_report', student_id=student.id) }}" class="btn btn-ghost btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i> Report
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{% if history %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    var ctx = document.getElementById('studentRatingChart');
+    if (!ctx || !window.Chart) return;
+    if (window.cctApplyChartDefaults) window.cctApplyChartDefaults();
+    var theme = window.cctChartTheme ? window.cctChartTheme() : { grid: '#eef2f8' };
+    var chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: {{ chart_labels|tojson }},
+        datasets: [{
+          label: 'Rating',
+          data: {{ chart_values|tojson }},
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.12)',
+          fill: true,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#2563eb'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { grid: { color: theme.grid }, ticks: { precision: 0 } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+
+    window.addEventListener('themechange', function () {
+      var next = window.cctChartTheme ? window.cctChartTheme() : null;
+      if (!next) return;
+      chart.options.scales.y.grid.color = next.grid;
+      ['x', 'y'].forEach(function (axis) {
+        var scale = chart.options.scales[axis];
+        if (!scale) return;
+        scale.ticks = scale.ticks || {};
+        scale.ticks.color = next.text;
+      });
+      chart.update('none');
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

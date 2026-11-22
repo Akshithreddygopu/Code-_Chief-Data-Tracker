@@ -1,0 +1,17 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-stack" role="status" aria-live="polite">
+      {% for category, message in messages %}
+        {% set cat = category if category in ['success', 'danger', 'warning', 'info'] else 'info' %}
+        {% set icon = {'success': 'check-circle-fill', 'danger': 'exclamation-octagon-fill', 'warning': 'exclamation-triangle-fill', 'info': 'info-circle-fill'}[cat] %}
+        <div class="flash {{ cat }}">
+          <i class="bi bi-{{ icon }}"></i>
+          <div>{{ message }}</div>
+          <button type="button" class="flash-close" aria-label="Dismiss">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
