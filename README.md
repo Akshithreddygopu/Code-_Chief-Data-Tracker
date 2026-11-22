@@ -105,7 +105,7 @@ Use the startup command corresponding to your Flask application entry point.
 
 **Akshith Reddy Gopu**
 
-Computer Science and Engineering Student
+Computer Science and Engineering & Cyber Security Student
 
 ---
 
